@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการงานสวน - Farm Zone To-Do List</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+        }
+        .progress-bar-fill {
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <header class="bg-emerald-700 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="goHome()">
+                <div class="bg-emerald-600 p-3 rounded-xl shadow-inner">
+                    <i class="fa-solid fa-seedling text-2xl text-emerald-100"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-tight">ระบบบันทึกงานสวนรายวัน</h1>
+                    <p class="text-xs sm:text-sm text-emerald-200">ติดตามสถานะการดูแลแปลงเกษตร (โซน A, B, C, D)</p>
+                </div>
+            </div>
+            <div class="flex items-center flex-wrap gap-2 sm:gap-3">
+                <button onclick="savePageAsImage()" class="text-xs sm:text-sm bg-emerald-800 hover:bg-emerald-600 text-emerald-100 border border-emerald-600 px-3 py-2 rounded-xl transition shadow flex items-center gap-1.5 font-medium">
+                    <i class="fa-solid fa-camera"></i> บันทึกรูปภาพ
+                </button>
+                <div class="flex items-center gap-2 bg-emerald-800 px-3.5 py-2 rounded-xl border border-emerald-600 shadow-inner">
+                    <i class="fa-regular fa-calendar-days text-emerald-300"></i>
+                    <span id="current-date" class="text-xs sm:text-sm font-medium"></span>
+                </div>
+                <button onclick="resetTodayTasks()" class="text-xs bg-emerald-800 hover:bg-emerald-600 text-emerald-100 border border-emerald-600 px-3 py-2 rounded-xl transition shadow flex items-center gap-1">
+                    <i class="fa-solid fa-rotate-right"></i> รีเซ็ต
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-6 flex-grow w-full">
+        
+        <!-- View 1: Home Map Overview -->
+        <div id="view-home" class="fade-in flex flex-col gap-6">
+            <!-- Overall Progress Banner -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <div class="bg-emerald-100 text-emerald-700 p-3.5 rounded-xl">
+                        <i class="fa-solid fa-chart-pie text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-slate-800 text-lg">ภาพรวมความคืบหน้าแปลงเกษตรทั้งหมด</h2>
+                        <p class="text-xs text-slate-500">คลิกเลือกโซนด้านล่างเพื่อจัดการงานประจำวัน</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 w-full sm:w-64 justify-between sm:justify-end">
+                    <div class="text-right">
+                        <span id="overall-percentage" class="text-emerald-600 font-bold text-xl">0%</span>
+                        <p class="text-[10px] text-slate-400">เสร็จสิ้นรวม</p>
+                    </div>
+                    <div class="w-36 bg-slate-100 rounded-full h-3 overflow-hidden">
+                        <div id="overall-progress-bar" class="bg-emerald-500 h-full progress-bar-fill rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Map Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-emerald-50 px-6 py-4 border-b border-emerald-100 flex flex-col sm:flex-row items-center justify-between gap-2">
+                    <div>
+                        <h2 class="font-bold text-emerald-900 text-lg flex items-center gap-2">
+                            <i class="fa-solid fa-map-location-dot text-emerald-600"></i> แผนผังโซนแปลงเกษตรหลัก
+                        </h2>
+                        <p class="text-xs text-emerald-700">โซนที่ทำครบ 100% จะเปลี่ยนเป็นสีทึบอัตโนมัติ • คลิกโซนเพื่อดูรายละเอียดงาน</p>
+                    </div>
+                    <span class="text-xs bg-emerald-200 text-emerald-800 font-semibold px-3 py-1 rounded-full shadow-sm">
+                        <i class="fa-solid fa-hand-pointer mr-1"></i> คลิกที่โซนเพื่อเข้าสู่ระบบงาน
+                    </span>
+                </div>
+                
+                <div class="p-6 flex flex-col items-center">
+                    <!-- Map Container with exact aspect ratio -->
+                    <div class="relative w-full max-w-3xl rounded-2xl overflow-hidden shadow-md border border-slate-300 bg-slate-900 aspect-[4/3] flex items-center justify-center">
+                        <!-- Background Aerial Image -->
+                        <img src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=80" alt="แผนที่แปลงเกษตร" class="absolute inset-0 w-full h-full object-cover opacity-65">
+                        <div class="absolute inset-0 bg-black/25"></div>
+                        
+                        <!-- SVG Interactive Polygon Overlay -->
+                        <svg viewBox="0 0 500 400" class="absolute inset-0 w-full h-full z-10" preserveAspectRatio="none">
+                            <!-- Zone B -->
+                            <g id="map-zoneB" class="cursor-pointer transition-all duration-300 hover:opacity-90" onclick="openZone('zoneB')">
+                                <polygon id="poly-zoneB" points="120,40 380,20 390,140 130,160" 
+                                         fill="rgba(245, 158, 11, 0.25)" 
+                                         stroke="#F59E0B" 
+                                         stroke-width="3.5" />
+                                <text id="text-zoneB" x="255" y="95" fill="#fff" font-size="15" font-weight="bold" text-anchor="middle" filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.9))">โซน B</text>
+                            </g>
+
+                            <!-- Zone C -->
+                            <g id="map-zoneC" class="cursor-pointer transition-all duration-300 hover:opacity-90" onclick="openZone('zoneC')">
+                                <polygon id="poly-zoneC" points="130,170 390,150 400,260 140,280" 
+                                         fill="rgba(234, 179, 8, 0.25)" 
+                                         stroke="#EAB308" 
+                                         stroke-width="3.5" />
+                                <text id="text-zoneC" x="265" y="220" fill="#fff" font-size="15" font-weight="bold" text-anchor="middle" filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.9))">โซน C</text>
+                            </g>
+
+                            <!-- Zone D -->
+                            <g id="map-zoneD" class="cursor-pointer transition-all duration-300 hover:opacity-90" onclick="openZone('zoneD')">
+                                <polygon id="poly-zoneD" points="140,290 300,280 310,380 150,390" 
+                                         fill="rgba(14, 165, 233, 0.25)" 
+                                         stroke="#0EA5E9" 
+                                         stroke-width="3.5" />
+                                <text id="text-zoneD" x="225" y="340" fill="#fff" font-size="15" font-weight="bold" text-anchor="middle" filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.9))">โซน D</text>
+                            </g>
+
+                            <!-- Zone A -->
+                            <g id="map-zoneA" class="cursor-pointer transition-all duration-300 hover:opacity-90" onclick="openZone('zoneA')">
+                                <polygon id="poly-zoneA" points="310,270 420,240 460,330 380,390 310,370" 
+                                         fill="rgba(244, 63, 94, 0.25)" 
+                                         stroke="#F43F5E" 
+                                         stroke-width="3.5" />
+                                <text id="text-zoneA" x="385" y="320" fill="#fff" font-size="15" font-weight="bold" text-anchor="middle" filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.9))">โซน A</text>
+                            </g>
+                        </svg>
+
+                        <!-- Floating Help Banner -->
+                        <div class="absolute bottom-3 inset-x-3 bg-black/70 backdrop-blur-md px-4 py-2 rounded-xl text-center z-20 shadow-lg border border-white/10">
+                            <p class="text-white text-xs sm:text-sm font-medium">📍 กดที่รูปโซนในแผนที่ด้านบนเพื่อเปิดหน้าจัดการงานของโซนนั้นๆ</p>
+                        </div>
+                    </div>
+
+                    <!-- Quick Access Zone Cards Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full mt-6" id="home-zone-cards">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View 2: Zone Detail Checklist -->
+        <div id="view-detail" class="hidden fade-in flex flex-col gap-6">
+            <!-- Back Button & Header Bar -->
+            <div class="flex items-center justify-between bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-200">
+                <button onclick="goHome()" class="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-sm font-semibold transition shadow-sm">
+                    <i class="fa-solid fa-arrow-left"></i> กลับสู่หน้าแผนผังรวม
+                </button>
+                <div class="flex items-center gap-3">
+                    <span id="detail-zone-badge" class="px-3.5 py-1.5 rounded-xl text-sm font-bold border">โซน</span>
+                    <span id="detail-zone-status" class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-600">0/5 งาน (0%)</span>
+                </div>
+            </div>
+
+            <!-- Detail Checklist Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div id="detail-header-bg" class="px-6 py-5 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 id="detail-zone-title" class="text-xl sm:text-2xl font-bold">ชื่อโซน</h2>
+                        <p class="text-xs sm:text-sm opacity-90">ตรวจสอบและทำเครื่องหมายรายการงานที่เสร็จสิ้นแล้วในวันนี้</p>
+                    </div>
+                    <button onclick="completeAllZoneTasks()" class="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-2 rounded-xl backdrop-blur-sm transition border border-white/30 shadow-sm">
+                        <i class="fa-solid fa-check-double mr-1"></i> ทำเครื่องหมายเสร็จทั้งหมด
+                    </button>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="w-full bg-slate-100 h-3">
+                    <div id="detail-progress-bar" class="bg-emerald-500 h-full progress-bar-fill" style="width: 0%"></div>
+                </div>
+
+                <!-- Tasks Checklist Container -->
+                <div id="detail-tasks-container" class="p-6 grid grid-cols-1 gap-3">
+                    <!-- Tasks rendered dynamically -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8 text-center text-xs text-slate-400">
+        <p>ระบบบันทึกงานแปลงเกษตร © 2026 • บันทึกอัตโนมัติในเครื่องของคุณ</p>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-900 text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 z-50 text-sm border border-slate-700">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toast-message">บันทึกข้อมูลเรียบร้อยแล้ว</span>
+    </div>
+
+    <!-- Include html2canvas CDN for image capture -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script>
+        // Define tasks requested by user
+        const taskList = [
+            { id: 'disease', label: 'ต้นเป็นโรค', icon: 'fa-virus' },
+            { id: 'fertilizer', label: 'ใส่ปุ๋ย', icon: 'fa-bottle-droplet' },
+            { id: 'pruning', label: 'แต่งแหนง', icon: 'fa-scissors' },
+            { id: 'spray', label: 'ฉีดยา', icon: 'fa-spray-can-sparkles' },
+            { id: 'mowing', label: 'ตัดหญ้า', icon: 'fa-seedling' }
+        ];
+
+        // Define zones configuration
+        zonesData = [
+            { id: 'zoneA', name: 'โซน A', color: '#F43F5E', badgeBg: 'bg-pink-100 text-pink-800 border-pink-200', headerBg: 'bg-pink-500' },
+            { id: 'zoneB', name: 'โซน B', color: '#F59E0B', badgeBg: 'bg-amber-100 text-amber-800 border-amber-200', headerBg: 'bg-amber-500' },
+            { id: 'zoneC', name: 'โซน C', color: '#EAB308', badgeBg: 'bg-yellow-100 text-yellow-800 border-yellow-200', headerBg: 'bg-yellow-500' },
+            { id: 'zoneD', name: 'โซน D', color: '#0EA5E9', badgeBg: 'bg-sky-100 text-sky-800 border-sky-200', headerBg: 'bg-sky-500' }
+        ];
+
+        // Current active zone in detail view
+        let currentActiveZone = null;
+
+        // Storage key with today's date
+        const getStorageKey = () => {
+            const today = new Date().toISOString().split('T')[0];
+            return `farm_tasks_v2_${today}`;
+        };
+
+        // Load tasks state from localStorage
+        let appState = JSON.parse(localStorage.getItem(getStorageKey())) || {};
+
+        // Initialize state if empty
+        zonesData.forEach(zone => {
+            if (!appState[zone.id]) {
+                appState[zone.id] = {};
+                taskList.forEach(task => {
+                    appState[zone.id][task.id] = false;
+                });
+            }
+        });
+
+        // Display current date in Thai format
+        function updateDateDisplay() {
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            const now = new Date();
+            document.getElementById('current-date').innerText = now.toLocaleDateString('th-TH', options);
+        }
+
+        // Save state to localStorage and re-render current view
+        function saveState() {
+            localStorage.setItem(getStorageKey(), JSON.stringify(appState));
+            renderUI();
+        }
+
+        // Show toast notification
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        // Navigation functions
+        function goHome() {
+            currentActiveZone = null;
+            document.getElementById('view-detail').classList.add('hidden');
+            document.getElementById('view-home').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            renderUI();
+        }
+
+        function openZone(zoneId) {
+            currentActiveZone = zoneId;
+            document.getElementById('view-home').classList.add('hidden');
+            document.getElementById('view-detail').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            renderDetailUI();
+        }
+
+        // Handle task toggle in detail view
+        function handleTaskToggle(taskId, isChecked) {
+            if (!currentActiveZone) return;
+            appState[currentActiveZone][taskId] = isChecked;
+            saveState();
+            renderDetailUI();
+
+            const zone = zonesData.find(z => z.id === currentActiveZone);
+            const zoneTasks = appState[currentActiveZone];
+            const completedCount = Object.values(zoneTasks).filter(Boolean).length;
+            if (completedCount === taskList.length) {
+                showToast(`ยอดเยี่ยม! ${zone.name} เสร็จสิ้นครบ 100% แล้ว 🎉`);
+            }
+        }
+
+        // Complete all tasks for current zone
+        function completeAllZoneTasks() {
+            if (!currentActiveZone) return;
+            taskList.forEach(task => {
+                appState[currentActiveZone][task.id] = true;
+            });
+            saveState();
+            renderDetailUI();
+            const zone = zonesData.find(z => z.id === currentActiveZone);
+            showToast(`${zone.name} ทำเครื่องหมายเสร็จสิ้นทั้งหมดแล้ว!`);
+        }
+
+        // Reset all tasks for today
+        function resetTodayTasks() {
+            if (confirm('คุณต้องการรีเซ็ตงานทั้งหมดของวันนี้ใช่หรือไม่?')) {
+                zonesData.forEach(zone => {
+                    taskList.forEach(task => {
+                        appState[zone.id][task.id] = false;
+                    });
+                });
+                saveState();
+                if (currentActiveZone) {
+                    renderDetailUI();
+                } else {
+                    renderUI();
+                }
+                showToast('รีเซ็ตข้อมูลงานของวันนี้เรียบร้อยแล้ว');
+            }
+        }
+
+        // Save Home Page as Image feature
+        function savePageAsImage() {
+            // Ensure we are on home view for best overview snapshot
+            const wasDetail = !document.getElementById('view-detail').classList.contains('hidden');
+            if (wasDetail) {
+                goHome();
+            }
+
+            showToast('กำลังสร้างรูปภาพสรุปผลงาน... กรุณารอสักครู่ 📸');
+
+            const targetElement = document.querySelector('main');
+            
+            // Use html2canvas to capture the main container
+            html2canvas(targetElement, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#f8fafc'
+            }).then(canvas => {
+                const imageURL = canvas.toDataURL('image/png');
+                const downloadLink = document.createElement('a');
+                const todayStr = new Date().toISOString().split('T')[0];
+                downloadLink.download = `Farm_Progress_${todayStr}.png`;
+                downloadLink.href = imageURL;
+                downloadLink.click();
+                showToast('บันทึกรูปภาพเรียบร้อยแล้ว! 📥');
+            }).catch(err => {
+                console.error(err);
+                showToast('ไม่สามารถบันทึกรูปภาพได้ในขณะนี้');
+            });
+        }
+
+        // Render Home View UI
+        function renderUI() {
+            const homeCardsContainer = document.getElementById('home-zone-cards');
+            homeCardsContainer.innerHTML = '';
+
+            let totalCompletedTasks = 0;
+            let totalPossibleTasks = zonesData.length * taskList.length;
+
+            zonesData.forEach(zone => {
+                const zoneState = appState[zone.id] || {};
+                const completedCount = taskList.filter(t => zoneState[t.id]).length;
+                const percentage = Math.round((completedCount / taskList.length) * 100);
+                totalCompletedTasks += completedCount;
+                const isComplete = percentage === 100;
+
+                // Update SVG Map Polygon State
+                const polygon = document.getElementById(`poly-${zone.id}`);
+                const textEl = document.getElementById(`text-${zone.id}`);
+                if (polygon && textEl) {
+                    if (isComplete) {
+                        polygon.setAttribute('fill', zone.color); // Solid fill 100%
+                        polygon.setAttribute('stroke-width', '4.5');
+                        textEl.textContent = `${zone.name} (100%)`;
+                    } else {
+                        polygon.setAttribute('fill', zone.color.replace(')', ', 0.28)').replace('rgb', 'rgba')); // Transparent
+                        polygon.setAttribute('stroke-width', '3.5');
+                        textEl.textContent = `${zone.name} (${percentage}%)`;
+                    }
+                }
+
+                // Render Quick Home Zone Card
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-xl shadow-sm border ${isComplete ? 'border-emerald-300 ring-2 ring-emerald-100 bg-emerald-50/20' : 'border-slate-200 hover:border-slate-300'} p-4 flex flex-col gap-3 cursor-pointer transition transform hover:-translate-y-1`;
+                card.onclick = () => openZone(zone.id);
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="px-3 py-1 rounded-xl text-sm font-bold border ${zone.badgeBg}">${zone.name}</span>
+                        ${isComplete ? '<span class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1"><i class="fa-solid fa-check"></i> เสร็จสิ้น</span>' : `<span class="text-xs text-slate-500 font-medium">${completedCount}/5 งาน</span>`}
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div class="bg-emerald-500 h-full progress-bar-fill rounded-full" style="width: ${percentage}%"></div>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+                        <span>สถานะ: ${percentage}%</span>
+                        <span class="text-emerald-600 font-semibold flex items-center gap-1">จัดการงาน <i class="fa-solid fa-chevron-right text-[10px]"></i></span>
+                    </div>
+                `;
+                homeCardsContainer.appendChild(card);
+            });
+
+            // Overall Summary Percentage
+            const overallPercentage = Math.round((totalCompletedTasks / totalPossibleTasks) * 100);
+            document.getElementById('overall-percentage').innerText = overallPercentage + '%';
+            document.getElementById('overall-progress-bar').style.width = overallPercentage + '%';
+        }
+
+        // Render Detail View UI
+        function renderDetailUI() {
+            if (!currentActiveZone) return;
+            const zone = zonesData.find(z => z.id === currentActiveZone);
+            const zoneState = appState[zone.id] || {};
+            const completedCount = taskList.filter(t => zoneState[t.id]).length;
+            const percentage = Math.round((completedCount / taskList.length) * 100);
+            const isComplete = percentage === 100;
+
+            // Update Header Information
+            document.getElementById('detail-zone-badge').className = `px-3.5 py-1.5 rounded-xl text-sm font-bold border ${zone.badgeBg}`;
+            document.getElementById('detail-zone-badge').innerText = zone.name;
+            document.getElementById('detail-zone-status').innerText = `${completedCount}/5 งาน (${percentage}%)`;
+            document.getElementById('detail-zone-title').innerText = `รายการงานประจำวัน - ${zone.name}`;
+            
+            const headerBgEl = document.getElementById('detail-header-bg');
+            headerBgEl.className = `px-6 py-5 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${zone.headerBg}`;
+
+            document.getElementById('detail-progress-bar').style.width = `${percentage}%`;
+
+            // Render Task Checklist Items
+            const tasksContainer = document.getElementById('detail-tasks-container');
+            tasksContainer.innerHTML = '';
+
+            taskList.forEach(task => {
+                const isChecked = !!zoneState[task.id];
+                const label = document.createElement('label');
+                label.className = `flex items-center justify-between p-4 rounded-xl border ${isChecked ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900 shadow-sm' : 'bg-slate-50/60 border-slate-200 hover:bg-slate-100/80 text-slate-700'} cursor-pointer transition`;
+                
+                label.innerHTML = `
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-10 h-10 rounded-xl ${isChecked ? 'bg-emerald-200 text-emerald-800 shadow-inner' : 'bg-slate-200 text-slate-600'} flex items-center justify-center text-base transition">
+                            <i class="fa-solid ${task.icon}"></i>
+                        </div>
+                        <div>
+                            <span class="text-base font-semibold ${isChecked ? 'line-through opacity-80' : ''}">${task.label}</span>
+                            <p class="text-xs text-slate-400">${isChecked ? 'ดำเนินการเสร็จสิ้นแล้ว' : 'ยังไม่ได้ทำเครื่องหมาย'}</p>
+                        </div>
+                    </div>
+                    <input type="checkbox" 
+                           class="w-6 h-6 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                           ${isChecked ? 'checked' : ''}
+                           onchange="handleTaskToggle('${task.id}', this.checked)">
+                `;
+                tasksContainer.appendChild(label);
+            });
+        }
+
+        // Initial load on window startup
+        window.onload = function() {
+            updateDateDisplay();
+            renderUI();
+        };
+    </script>
+</body>
+</html>
