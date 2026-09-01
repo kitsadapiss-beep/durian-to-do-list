@@ -267,7 +267,9 @@
             }
         });
 
-        // ฟังก์ชันส่งข้อมูลเข้า Google Sheets
+        // ==========================================================
+        // 🚀 ฟังก์ชันส่งข้อมูลไปยัง Google Sheets API (ข้อ 3)
+        // ==========================================================
         async function syncToGoogleSheets(zoneId) {
             const today = new Date().toISOString().split('T')[0];
             const payload = {
@@ -280,13 +282,13 @@
             try {
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
+                    mode: 'no-cors', 
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                console.log(`บันทึกข้อมูล ${zoneId} ลง Google Sheets เรียบร้อยแล้ว`);
+                console.log(`Synced ${zoneId} to Google Sheets successfully.`);
             } catch (error) {
-                console.error('เกิดข้อผิดพลาดในการบันทึกลง Google Sheets:', error);
+                console.error('Error syncing to Google Sheets:', error);
             }
         }
 
@@ -326,13 +328,16 @@
             renderDetailUI();
         }
 
+        // ==========================================================
+        // 🔄 ปรับฟังก์ชัน handleTaskToggle เพื่อเรียกใช้ syncToGoogleSheets
+        // ==========================================================
         function handleTaskToggle(taskId, isChecked) {
             if (!currentActiveZone) return;
             appState[currentActiveZone][taskId] = isChecked;
             saveState();
             renderDetailUI();
 
-            // ส่งข้อมูลไปยัง Google Sheets
+            // ส่งข้อมูลไปบันทึกบน Google Sheets
             syncToGoogleSheets(currentActiveZone);
 
             const zone = zonesData.find(z => z.id === currentActiveZone);
@@ -343,6 +348,9 @@
             }
         }
 
+        // ==========================================================
+        // 🔄 ปรับฟังก์ชัน completeAllZoneTasks เพื่อเรียกใช้ syncToGoogleSheets
+        // ==========================================================
         function completeAllZoneTasks() {
             if (!currentActiveZone) return;
             taskList.forEach(task => {
@@ -351,7 +359,7 @@
             saveState();
             renderDetailUI();
 
-            // ส่งข้อมูลไปยัง Google Sheets
+            // ส่งข้อมูลไปบันทึกบน Google Sheets
             syncToGoogleSheets(currentActiveZone);
 
             const zone = zonesData.find(z => z.id === currentActiveZone);
