@@ -1,5 +1,3 @@
-// วาง URL ที่ได้จากขั้นตอนที่ 1 ตรงนี้
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd4ZY7wUPL3Fl3_MJd16acJqDhA_rehPqtXPdZDBmnibobWPVOVJBDA8-g/exec';
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -207,7 +205,7 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
     </main>
 
     <footer class="bg-white border-t border-slate-200 py-4 mt-8 text-center text-xs text-slate-400">
-        <p>ระบบบันทึกงานแปลงเกษตร © 2026 • บันทึกอัตโนมัติในเครื่องของคุณ</p>
+        <p>ระบบบันทึกงานแปลงเกษตร © 2026 • บันทึกอัตโนมัติลง Google Sheets และในเครื่องของคุณ</p>
     </footer>
 
     <!-- Toast Notification -->
@@ -220,7 +218,12 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script>
-        // Define tasks requested by user
+        // ==========================================================
+        // 🔗 URL เชื่อมต่อกับ Google Apps Script Web App ของคุณ
+        // ==========================================================
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd4ZY7wUPL3Fl3_MJd16acJqDhA_rehPqtXPdZDBmnibobWPVOVJBDA8-g/exec';
+
+        // รายการงานที่ต้องทำในสวน
         const taskList = [
             { id: 'disease', label: 'ต้นเป็นโรค', icon: 'fa-virus' },
             { id: 'fertilizer', label: 'ใส่ปุ๋ย', icon: 'fa-bottle-droplet' },
@@ -229,27 +232,32 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
             { id: 'mowing', label: 'ตัดหญ้า', icon: 'fa-seedling' }
         ];
 
-        // Define zones configuration
-        zonesData = [
+        // Map ชื่องานภาษาไทยเพื่อบันทึกลง Google Sheet
+        const taskNameMap = {
+            'disease': 'ต้นเป็นโรค',
+            'fertilizer': 'ใส่ปุ๋ย',
+            'pruning': 'แต่งแหนง',
+            'spray': 'ฉีดยา',
+            'mowing': 'ตัดหญ้า'
+        };
+
+        // ข้อมูลโซนต่างๆ
+        const zonesData = [
             { id: 'zoneA', name: 'โซน A', color: '#F43F5E', badgeBg: 'bg-pink-100 text-pink-800 border-pink-200', headerBg: 'bg-pink-500' },
             { id: 'zoneB', name: 'โซน B', color: '#F59E0B', badgeBg: 'bg-amber-100 text-amber-800 border-amber-200', headerBg: 'bg-amber-500' },
             { id: 'zoneC', name: 'โซน C', color: '#EAB308', badgeBg: 'bg-yellow-100 text-yellow-800 border-yellow-200', headerBg: 'bg-yellow-500' },
             { id: 'zoneD', name: 'โซน D', color: '#0EA5E9', badgeBg: 'bg-sky-100 text-sky-800 border-sky-200', headerBg: 'bg-sky-500' }
         ];
 
-        // Current active zone in detail view
         let currentActiveZone = null;
 
-        // Storage key with today's date
         const getStorageKey = () => {
             const today = new Date().toISOString().split('T')[0];
             return `farm_tasks_v2_${today}`;
         };
 
-        // Load tasks state from localStorage
         let appState = JSON.parse(localStorage.getItem(getStorageKey())) || {};
 
-        // Initialize state if empty
         zonesData.forEach(zone => {
             if (!appState[zone.id]) {
                 appState[zone.id] = {};
@@ -259,20 +267,40 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
             }
         });
 
-        // Display current date in Thai format
+        // ฟังก์ชันส่งข้อมูลเข้า Google Sheets
+        async function syncToGoogleSheets(zoneId) {
+            const today = new Date().toISOString().split('T')[0];
+            const payload = {
+                date: today,
+                zone: zoneId,
+                tasks: appState[zoneId],
+                taskNames: taskNameMap
+            };
+
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                console.log(`บันทึกข้อมูล ${zoneId} ลง Google Sheets เรียบร้อยแล้ว`);
+            } catch (error) {
+                console.error('เกิดข้อผิดพลาดในการบันทึกลง Google Sheets:', error);
+            }
+        }
+
         function updateDateDisplay() {
             const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
             const now = new Date();
             document.getElementById('current-date').innerText = now.toLocaleDateString('th-TH', options);
         }
 
-        // Save state to localStorage and re-render current view
         function saveState() {
             localStorage.setItem(getStorageKey(), JSON.stringify(appState));
             renderUI();
         }
 
-        // Show toast notification
         function showToast(msg) {
             const toast = document.getElementById('toast');
             document.getElementById('toast-message').innerText = msg;
@@ -282,7 +310,6 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
             }, 2500);
         }
 
-        // Navigation functions
         function goHome() {
             currentActiveZone = null;
             document.getElementById('view-detail').classList.add('hidden');
@@ -299,12 +326,14 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
             renderDetailUI();
         }
 
-        // Handle task toggle in detail view
         function handleTaskToggle(taskId, isChecked) {
             if (!currentActiveZone) return;
             appState[currentActiveZone][taskId] = isChecked;
             saveState();
             renderDetailUI();
+
+            // ส่งข้อมูลไปยัง Google Sheets
+            syncToGoogleSheets(currentActiveZone);
 
             const zone = zonesData.find(z => z.id === currentActiveZone);
             const zoneTasks = appState[currentActiveZone];
@@ -314,7 +343,6 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
             }
         }
 
-        // Complete all tasks for current zone
         function completeAllZoneTasks() {
             if (!currentActiveZone) return;
             taskList.forEach(task => {
@@ -322,17 +350,21 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
             });
             saveState();
             renderDetailUI();
+
+            // ส่งข้อมูลไปยัง Google Sheets
+            syncToGoogleSheets(currentActiveZone);
+
             const zone = zonesData.find(z => z.id === currentActiveZone);
             showToast(`${zone.name} ทำเครื่องหมายเสร็จสิ้นทั้งหมดแล้ว!`);
         }
 
-        // Reset all tasks for today
         function resetTodayTasks() {
             if (confirm('คุณต้องการรีเซ็ตงานทั้งหมดของวันนี้ใช่หรือไม่?')) {
                 zonesData.forEach(zone => {
                     taskList.forEach(task => {
                         appState[zone.id][task.id] = false;
                     });
+                    syncToGoogleSheets(zone.id);
                 });
                 saveState();
                 if (currentActiveZone) {
@@ -344,9 +376,7 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
             }
         }
 
-        // Save Home Page as Image feature
         function savePageAsImage() {
-            // Ensure we are on home view for best overview snapshot
             const wasDetail = !document.getElementById('view-detail').classList.contains('hidden');
             if (wasDetail) {
                 goHome();
@@ -356,7 +386,6 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
 
             const targetElement = document.querySelector('main');
             
-            // Use html2canvas to capture the main container
             html2canvas(targetElement, {
                 scale: 2,
                 useCORS: true,
@@ -376,7 +405,6 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
             });
         }
 
-        // Render Home View UI
         function renderUI() {
             const homeCardsContainer = document.getElementById('home-zone-cards');
             homeCardsContainer.innerHTML = '';
@@ -391,22 +419,20 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
                 totalCompletedTasks += completedCount;
                 const isComplete = percentage === 100;
 
-                // Update SVG Map Polygon State
                 const polygon = document.getElementById(`poly-${zone.id}`);
                 const textEl = document.getElementById(`text-${zone.id}`);
                 if (polygon && textEl) {
                     if (isComplete) {
-                        polygon.setAttribute('fill', zone.color); // Solid fill 100%
+                        polygon.setAttribute('fill', zone.color);
                         polygon.setAttribute('stroke-width', '4.5');
                         textEl.textContent = `${zone.name} (100%)`;
                     } else {
-                        polygon.setAttribute('fill', zone.color.replace(')', ', 0.28)').replace('rgb', 'rgba')); // Transparent
+                        polygon.setAttribute('fill', zone.color.replace(')', ', 0.28)').replace('rgb', 'rgba'));
                         polygon.setAttribute('stroke-width', '3.5');
                         textEl.textContent = `${zone.name} (${percentage}%)`;
                     }
                 }
 
-                // Render Quick Home Zone Card
                 const card = document.createElement('div');
                 card.className = `bg-white rounded-xl shadow-sm border ${isComplete ? 'border-emerald-300 ring-2 ring-emerald-100 bg-emerald-50/20' : 'border-slate-200 hover:border-slate-300'} p-4 flex flex-col gap-3 cursor-pointer transition transform hover:-translate-y-1`;
                 card.onclick = () => openZone(zone.id);
@@ -427,22 +453,18 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
                 homeCardsContainer.appendChild(card);
             });
 
-            // Overall Summary Percentage
             const overallPercentage = Math.round((totalCompletedTasks / totalPossibleTasks) * 100);
             document.getElementById('overall-percentage').innerText = overallPercentage + '%';
             document.getElementById('overall-progress-bar').style.width = overallPercentage + '%';
         }
 
-        // Render Detail View UI
         function renderDetailUI() {
             if (!currentActiveZone) return;
             const zone = zonesData.find(z => z.id === currentActiveZone);
             const zoneState = appState[zone.id] || {};
             const completedCount = taskList.filter(t => zoneState[t.id]).length;
             const percentage = Math.round((completedCount / taskList.length) * 100);
-            const isComplete = percentage === 100;
 
-            // Update Header Information
             document.getElementById('detail-zone-badge').className = `px-3.5 py-1.5 rounded-xl text-sm font-bold border ${zone.badgeBg}`;
             document.getElementById('detail-zone-badge').innerText = zone.name;
             document.getElementById('detail-zone-status').innerText = `${completedCount}/5 งาน (${percentage}%)`;
@@ -453,7 +475,6 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
 
             document.getElementById('detail-progress-bar').style.width = `${percentage}%`;
 
-            // Render Task Checklist Items
             const tasksContainer = document.getElementById('detail-tasks-container');
             tasksContainer.innerHTML = '';
 
@@ -481,7 +502,6 @@ const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyCOnyWTameWd
             });
         }
 
-        // Initial load on window startup
         window.onload = function() {
             updateDateDisplay();
             renderUI();
